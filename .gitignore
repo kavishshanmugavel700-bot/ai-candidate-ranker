@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+chroma_db/
+*.pkl
+*.npy
+data/embeddings.npy
+data/candidates.jsonl
+data/embedding_ids.npy
