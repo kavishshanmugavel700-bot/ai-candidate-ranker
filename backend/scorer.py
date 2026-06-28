@@ -14,7 +14,8 @@ def score_candidate(candidate: dict, jd_req: dict) -> dict:
     certs     = candidate.get('certifications', [])
 
     if isinstance(profile, dict):
-        name    = profile.get('name') or profile.get('full_name') or 'Unknown'
+        name = (profile.get('anonymized_name') or profile.get('name') or
+        profile.get('full_name') or candidate.get('candidate_id') or 'Unknown')
         title   = profile.get('title') or profile.get('current_title') or ''
         summary = profile.get('summary') or ''
     else:

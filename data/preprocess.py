@@ -9,14 +9,17 @@ def build_profile_text(row) -> str:
     # profile — likely has name, title, summary inside
     profile = row.get('profile', '')
     if isinstance(profile, dict):
-        name = profile.get('name') or profile.get('full_name') or ''
-        title = profile.get('title') or profile.get('current_title') or profile.get('headline') or ''
-        summary = profile.get('summary') or profile.get('bio') or profile.get('about') or ''
-        location = profile.get('location') or profile.get('city') or ''
-        if name:    parts.append(f"Name: {name}")
-        if title:   parts.append(f"Role: {title}")
-        if summary: parts.append(f"Summary: {str(summary)[:300]}")
-        if location:parts.append(f"Location: {location}")
+        name = (profile.get('anonymized_name') or profile.get('name') or
+        profile.get('full_name') or '')
+        title    = profile.get('current_title') or profile.get('headline') or profile.get('title') or ''
+        summary  = profile.get('summary') or ''
+        location = profile.get('location') or profile.get('country') or ''
+        exp      = profile.get('years_of_experience') or ''
+        company  = profile.get('current_company') or ''
+        industry = profile.get('current_industry') or ''
+        if exp:      parts.append(f"Experience: {exp} years")
+        if company:  parts.append(f"Current Company: {company}")
+        if industry: parts.append(f"Industry: {industry}")
     elif isinstance(profile, str) and profile:
         parts.append(f"Profile: {profile[:300]}")
 
