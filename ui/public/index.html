@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Candidate Ranker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">RankAI</span>
+      </div>
+      <nav class="nav-pills">
+        <span class="pill">Hackathon Build</span>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div class="hero-badge">Powered by AI</div>
+      <h1 class="hero-title">
+        AI Candidate<br/>
+        <span class="gradient-text">Ranker</span>
+      </h1>
+      <p class="hero-sub">Paste a job description. Get a ranked list of the best-fit candidates — scored on skills, experience, and growth — in seconds.</p>
+    </div>
+  </section>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="container">
+
+      <!-- INPUT CARD -->
+      <div class="input-card glass-card">
+        <div class="input-card-header">
+          <div class="input-icon">📋</div>
+          <div>
+            <h2 class="input-title">Job Description</h2>
+            <p class="input-hint">Paste the full JD — the more detail, the better the ranking.</p>
+          </div>
+        </div>
+        <textarea
+          id="jd-input"
+          class="jd-textarea"
+          placeholder="e.g. We're looking for a Senior Backend Engineer with 4+ years of experience in Python, Django, and PostgreSQL. The role involves designing microservices, leading code reviews, and collaborating cross-functionally with product teams..."
+          rows="7"
+        ></textarea>
+        <div class="input-footer">
+          <span class="char-count" id="char-count">0 characters</span>
+          <button class="btn-rank" id="rank-btn" onclick="rankCandidates()">
+            <span class="btn-icon">🔍</span>
+            Find Top Candidates
+          </button>
+        </div>
+      </div>
+
+      <!-- ERROR -->
+      <div class="error-box" id="error-box" style="display:none;">
+        <span class="error-icon">⚠️</span>
+        <span id="error-msg">Something went wrong.</span>
+      </div>
+
+      <!-- RESULTS HEADER -->
+      <div class="results-header" id="results-header" style="display:none;">
+        <h2 class="results-title">Ranked Candidates</h2>
+        <span class="results-badge" id="results-count"></span>
+      </div>
+
+      <!-- SKELETON -->
+      <div id="skeleton-list" style="display:none;">
+        <div class="skeleton-card" style="--delay:0s"></div>
+        <div class="skeleton-card" style="--delay:0.1s"></div>
+        <div class="skeleton-card" style="--delay:0.2s"></div>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="results-list" class="results-list"></div>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>Built for hackathon · Team AI Rankers · 2025</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
