@@ -1,11 +1,31 @@
-// ── Char counter ──────────────────────────────────────────────
+// ── State & DOM references ───────────────────────────────────────
 const textarea  = document.getElementById('jd-input');
 const charCount = document.getElementById('char-count');
 
-textarea.addEventListener('input', () => {
+let rawCandidates    = [];
+let activeFilterPill = 'all';
+
+// ── Char Counter & Presets ──────────────────────────────────────
+textarea.addEventListener('input', updateCharCount);
+
+function updateCharCount() {
   const n = textarea.value.length;
   charCount.textContent = `${n} character${n !== 1 ? 's' : ''}`;
-});
+}
+
+const PRESETS = {
+  backend: "We're looking for a Senior Backend Engineer with 4+ years of experience in Python, Django, and PostgreSQL. The role involves designing microservices, leading code reviews, building scalable REST APIs, and collaborating cross-functionally with product teams.",
+  frontend: "Looking for a Lead Frontend Engineer proficient in React, Modern JavaScript (ES6+), CSS Architecture, and UI performance optimization. Must have experience building interactive web applications with dynamic visual design and state management.",
+  data: "Seeking a Data Scientist / AI Engineer with strong experience in Python, Machine Learning frameworks, NLP, and LLM orchestration. Responsibilities include building predictive models, data extraction pipelines, and candidate evaluation engines."
+};
+
+function fillPreset(type) {
+  if (PRESETS[type]) {
+    textarea.value = PRESETS[type];
+    updateCharCount();
+    textarea.focus();
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function scoreClass(s) {
@@ -40,7 +60,7 @@ function buildBar(label, value) {
           style="width:0%"
         ></div>
       </div>
-      <span class="bar-val">${value}</span>
+      <span class="bar-val" data-target="${value}">0</span>
     </div>`;
 }
 
@@ -51,7 +71,7 @@ function buildRing(score) {
   return `
     <div class="score-ring">
       <svg width="64" height="64" viewBox="0 0 64 64">
-        <circle class="score-ring-bg"   cx="32" cy="32" r="26"/>
+        <circle class="score-ring-bg" cx="32" cy="32" r="26"/>
         <circle
           class="score-ring-fill ring-${cls}"
           cx="32" cy="32" r="26"
@@ -59,7 +79,7 @@ function buildRing(score) {
           style="stroke-dashoffset:${circ}"
         />
       </svg>
-      <div class="score-label score-${cls}">${score}</div>
+      <div class="score-label score-${cls}" data-target="${score}">0</div>
     </div>
     <span class="score-tag">Score</span>`;
 }
@@ -67,7 +87,7 @@ function buildRing(score) {
 function buildCard(c, idx) {
   const rank = idx + 1;
   return `
-    <div class="candidate-card" style="animation-delay:${idx * 0.07}s">
+    <div class="candidate-card" style="animation-delay:${idx * 0.05}s">
       <div class="card-rank ${rankClass(rank)}">${rankEmoji(rank)}</div>
       <div class="card-body">
         <div class="card-name">${escapeHTML(c.name)}</div>
@@ -85,45 +105,179 @@ function buildCard(c, idx) {
 }
 
 function escapeHTML(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Trigger bar / ring animations after DOM insert
+// Trigger bar / ring animations & number counter tickers after DOM insert
 function animateCards() {
-  // Bars
+  // 1. Bars
   document.querySelectorAll('.bar-fill[data-width]').forEach(el => {
     const w = el.dataset.width;
     requestAnimationFrame(() => { el.style.width = w + '%'; });
   });
-  // Rings
+
+  // 2. Rings
   document.querySelectorAll('.score-ring-fill[data-offset]').forEach(el => {
     const off = el.dataset.offset;
     requestAnimationFrame(() => { el.style.strokeDashoffset = off; });
   });
+
+  // 3. Animated Number Counter Tickers
+  document.querySelectorAll('[data-target]').forEach(el => {
+    const target = parseInt(el.dataset.target, 10);
+    if (isNaN(target)) return;
+
+    let start = 0;
+    const duration = 900; // ms
+    const startTime = performance.now();
+
+    function updateCounter(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out quad
+      const easedProgress = 1 - (1 - progress) * (1 - progress);
+      const currentVal = Math.floor(easedProgress * target);
+
+      el.textContent = currentVal;
+
+      if (progress < 1) {
+        requestAnimationFrame(updateCounter);
+      } else {
+        el.textContent = target;
+      }
+    }
+    requestAnimationFrame(updateCounter);
+  });
+
+  // 4. 3D Perspective Card Tilt
+  initCard3DTilt();
 }
 
-// ── Main function ─────────────────────────────────────────────
+function initCard3DTilt() {
+  document.querySelectorAll('.candidate-card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      const rotateX = ((y - centerY) / centerY) * -4; // Max 4 deg
+      const rotateY = ((x - centerX) / centerX) * 4;
+
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-2px)`;
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0px)';
+    });
+  });
+}
+
+// ── Filtering & Sorting Logic ──────────────────────────────────
+function setFilterPill(btn, filterVal) {
+  activeFilterPill = filterVal;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  onFilterChange();
+}
+
+function onFilterChange() {
+  if (!rawCandidates || rawCandidates.length === 0) return;
+
+  const searchInput = document.getElementById('search-input');
+  const query       = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const sortSelect  = document.getElementById('sort-select');
+  const sortKey     = sortSelect ? sortSelect.value : 'total_score';
+
+  // 1. Filter candidates
+  let filtered = rawCandidates.filter(c => {
+    const nameMatch   = (c.name || '').toLowerCase().includes(query);
+    const reasonMatch = (c.reason || '').toLowerCase().includes(query);
+    const matchesSearch = !query || nameMatch || reasonMatch;
+
+    let matchesScore = true;
+    if (activeFilterPill === 'top') matchesScore = (c.total_score >= 80);
+    else if (activeFilterPill === 'mid') matchesScore = (c.total_score >= 60);
+
+    return matchesSearch && matchesScore;
+  });
+
+  // 2. Sort candidates
+  filtered.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+
+  // 3. Render
+  renderCandidates(filtered, rawCandidates.length);
+}
+
+function renderCandidates(list, totalCount) {
+  const resultsCountEl = document.getElementById('results-count');
+  const resultsListEl  = document.getElementById('results-list');
+
+  if (resultsCountEl) {
+    if (list.length === totalCount) {
+      resultsCountEl.textContent = `${totalCount} candidate${totalCount !== 1 ? 's' : ''}`;
+    } else {
+      resultsCountEl.textContent = `Showing ${list.length} of ${totalCount} candidates`;
+    }
+  }
+
+  if (!resultsListEl) return;
+
+  if (list.length === 0) {
+    resultsListEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No candidates match your filter</div>
+        <div class="empty-sub">Try adjusting your search query or score filter pills.</div>
+      </div>`;
+    return;
+  }
+
+  resultsListEl.innerHTML = list.map((c, i) => buildCard(c, i)).join('');
+  setTimeout(animateCards, 60);
+}
+
+// ── Main ranking function with live telemetry ─────────────────
 async function rankCandidates() {
   const jd = textarea.value.trim();
 
   // Clear state
-  document.getElementById('error-box').style.display    = 'none';
-  document.getElementById('results-header').style.display = 'none';
-  document.getElementById('results-list').innerHTML     = '';
+  document.getElementById('error-box').style.display      = 'none';
+  document.getElementById('results-header').style.display   = 'none';
+  document.getElementById('results-list').innerHTML       = '';
 
   if (!jd) {
     showError('Please paste a job description before searching.');
     return;
   }
 
-  // Loading
+  // Loading & Telemetry status simulation
   const btn = document.getElementById('rank-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="btn-icon">⏳</span> Ranking...';
+
+  const telemetrySteps = [
+    { btn: '<span class="btn-icon">⚡</span> Extracting Requirements...', title: 'Extracting Requirements...' },
+    { btn: '<span class="btn-icon">🔍</span> Scanning Candidate Database...', title: 'Scanning Candidate Database...' },
+    { btn: '<span class="btn-icon">🧠</span> Scoring via Groq AI...', title: 'Scoring Candidates with Groq LLM...' },
+    { btn: '<span class="btn-icon">📊</span> Generating Rank Order...', title: 'Generating Final Rank Order...' }
+  ];
+  let stepIdx = 0;
+  const loaderTitle = document.getElementById('loader-status-title');
+
+  btn.innerHTML = telemetrySteps[stepIdx].btn;
+  if (loaderTitle) loaderTitle.textContent = telemetrySteps[stepIdx].title;
+
+  const telemetryInterval = setInterval(() => {
+    stepIdx = (stepIdx + 1) % telemetrySteps.length;
+    btn.innerHTML = telemetrySteps[stepIdx].btn;
+    if (loaderTitle) loaderTitle.textContent = telemetrySteps[stepIdx].title;
+  }, 1200);
+
   document.getElementById('skeleton-list').style.display = 'flex';
-  document.getElementById('skeleton-list').style.flexDirection = 'column';
 
   try {
     const res = await fetch('/api/rank', {
@@ -138,18 +292,17 @@ async function rankCandidates() {
 
     if (!data.success) throw new Error(data.message || 'Ranking failed.');
 
-    const candidates = data.candidates || [];
+    rawCandidates = data.candidates || [];
 
-    // Render
+    // Reset controls to defaults
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) sortSelect.value = 'total_score';
+
+    // Show results section and apply initial render
     document.getElementById('results-header').style.display = 'flex';
-    document.getElementById('results-count').textContent =
-      `${candidates.length} candidate${candidates.length !== 1 ? 's' : ''}`;
-
-    document.getElementById('results-list').innerHTML =
-      candidates.map((c, i) => buildCard(c, i)).join('');
-
-    // Kick off animations on next frame
-    setTimeout(animateCards, 60);
+    onFilterChange();
 
     // Smooth scroll to results
     document.getElementById('results-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -157,9 +310,10 @@ async function rankCandidates() {
   } catch (err) {
     showError(err.message || 'Could not connect to the ranking service. Make sure the Flask server is running on port 5000.');
   } finally {
+    clearInterval(telemetryInterval);
     document.getElementById('skeleton-list').style.display = 'none';
     btn.disabled = false;
-    btn.innerHTML = '<span class="btn-icon">🔍</span> Find Top Candidates';
+    btn.innerHTML = '<span class="btn-icon">✨</span> Find Top Candidates';
   }
 }
 
