@@ -1,3 +1,13 @@
+---
+title: Redrob Ranker
+emoji: ⚡
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # AI Candidate Ranker — RankAI
 
 **Team:** Debug Dynamos
