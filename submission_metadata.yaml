@@ -33,7 +33,7 @@ team_members:
 # ============================================================================
 github_repo: "https://github.com/kavishshanmugavel700-bot/ai-candidate-ranker"
 
-sandbox_link: "https://github.com/kavishshanmugavel700-bot/ai-candidate-ranker"
+sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
 # Required. A working hosted environment where the ranker can be run on a small
 # candidate sample. POINTED TO REPO - User: Please update if you host on HuggingFace Spaces.
 
