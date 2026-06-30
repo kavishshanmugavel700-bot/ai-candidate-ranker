@@ -28,7 +28,7 @@ team_members:
 # ============================================================================
 github_repo: "https://github.com/kavishshanmugavel700-bot/ai-candidate-ranker"
 
-sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
+sandbox_link: "https://huggingface.co/spaces/Velthecool/redrob-ranker"
 
 
 reproduce_command: "python generate_submission.py --id YOUR_PARTICIPANT_ID"
