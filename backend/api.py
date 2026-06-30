@@ -7,7 +7,7 @@ CORS(app)
 
 # Load data and build index when server starts
 print('Initialising AI Candidate Ranker...')
-init(use_full_dataset=False)  # change to True when ready for full dataset
+init(use_full_dataset=True)  # change to True when ready for full dataset
 print('Server ready!')
 
 @app.route('/', methods=['GET'])
