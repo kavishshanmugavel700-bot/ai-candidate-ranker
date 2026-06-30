@@ -2,8 +2,9 @@
 const textarea  = document.getElementById('jd-input');
 const charCount = document.getElementById('char-count');
 
-let rawCandidates    = [];
-let activeFilterPill = 'all';
+let rawCandidates         = [];
+let selectedCandidateIds  = [];
+let activeFilterPill      = 'all';
 
 // ── Char Counter & Presets ──────────────────────────────────────
 textarea.addEventListener('input', updateCharCount);
@@ -86,8 +87,19 @@ function buildRing(score) {
 
 function buildCard(c, idx) {
   const rank = idx + 1;
+  const isSelected = selectedCandidateIds.includes(c.id);
   return `
-    <div class="candidate-card" style="animation-delay:${idx * 0.05}s">
+    <div class="candidate-card ${isSelected ? 'selected' : ''}" style="animation-delay:${idx * 0.05}s" data-id="${c.id}">
+      <div class="card-checkbox-wrapper">
+        <input
+          type="checkbox"
+          class="card-checkbox"
+          id="check-${c.id}"
+          ${isSelected ? 'checked' : ''}
+          onchange="toggleCandidateSelection('${c.id}')"
+        />
+        <label for="check-${c.id}" class="card-checkbox-label">Compare</label>
+      </div>
       <div class="card-rank ${rankClass(rank)}">${rankEmoji(rank)}</div>
       <div class="card-body">
         <div class="card-name">${escapeHTML(c.name)}</div>
@@ -246,6 +258,7 @@ async function rankCandidates() {
   const jd = textarea.value.trim();
 
   // Clear state
+  clearSelection();
   document.getElementById('error-box').style.display      = 'none';
   document.getElementById('results-header').style.display   = 'none';
   document.getElementById('results-list').innerHTML       = '';
@@ -490,6 +503,151 @@ function exportToPDF() {
     console.error('PDF generation error:', err);
     alert('Failed to generate PDF.');
   });
+}
+
+// ── Candidate Selection & Comparison Matrix ─────────────────────
+function toggleCandidateSelection(id) {
+  const checkbox = document.getElementById(`check-${id}`);
+  const card = document.querySelector(`.candidate-card[data-id="${id}"]`);
+  
+  if (checkbox.checked) {
+    if (selectedCandidateIds.length >= 3) {
+      checkbox.checked = false;
+      alert("You can compare a maximum of 3 candidates at a time.");
+      return;
+    }
+    selectedCandidateIds.push(id);
+    if (card) card.classList.add('selected');
+  } else {
+    selectedCandidateIds = selectedCandidateIds.filter(cid => cid !== id);
+    if (card) card.classList.remove('selected');
+  }
+  
+  updateSelectionBar();
+}
+
+function updateSelectionBar() {
+  const count = selectedCandidateIds.length;
+  const bar = document.getElementById('selection-bar');
+  const countEl = document.getElementById('selection-count');
+  const compareBtn = document.getElementById('compare-btn');
+
+  if (count > 0) {
+    bar.style.display = 'block';
+    countEl.textContent = count;
+    compareBtn.disabled = (count < 2);
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  selectedCandidateIds = [];
+  document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.candidate-card').forEach(card => card.classList.remove('selected'));
+  updateSelectionBar();
+}
+
+function openComparisonModal() {
+  const selectedCandidates = rawCandidates.filter(c => selectedCandidateIds.includes(c.id));
+  if (selectedCandidates.length < 2) {
+    alert("Select at least 2 candidates to compare!");
+    return;
+  }
+
+  let tableHeaderCols = '<th class="comparison-col-label">Category</th>';
+  let totalScoreCols = '';
+  let skillsCols = '';
+  let expCols = '';
+  let growthCols = '';
+  let reasonCols = '';
+
+  selectedCandidates.forEach((c, idx) => {
+    tableHeaderCols += `
+      <th class="comparison-candidate-header">
+        <div class="comparison-name">${escapeHTML(c.name)}</div>
+        <div class="comparison-rank">Rank #${idx + 1}</div>
+      </th>
+    `;
+    const scoreCls = scoreClass(c.total_score);
+    totalScoreCols += `
+      <td class="comparison-candidate-header">
+        <div class="comparison-score-badge score-${scoreCls}">${c.total_score}</div>
+      </td>
+    `;
+    skillsCols += `
+      <td>
+        <div class="bar-row">
+          <div class="bar-track" style="height: 6px;">
+            <div class="bar-fill bar-${scoreClass(c.skills_score)}" style="width: ${c.skills_score}%"></div>
+          </div>
+          <span class="bar-val">${c.skills_score}</span>
+        </div>
+      </td>
+    `;
+    expCols += `
+      <td>
+        <div class="bar-row">
+          <div class="bar-track" style="height: 6px;">
+            <div class="bar-fill bar-${scoreClass(c.experience_score)}" style="width: ${c.experience_score}%"></div>
+          </div>
+          <span class="bar-val">${c.experience_score}</span>
+        </div>
+      </td>
+    `;
+    growthCols += `
+      <td>
+        <div class="bar-row">
+          <div class="bar-track" style="height: 6px;">
+            <div class="bar-fill bar-${scoreClass(c.growth_score)}" style="width: ${c.growth_score}%"></div>
+          </div>
+          <span class="bar-val">${c.growth_score}</span>
+        </div>
+      </td>
+    `;
+    reasonCols += `
+      <td>
+        <p class="comparison-reason-text">${escapeHTML(c.reason)}</p>
+      </td>
+    `;
+  });
+
+  const matrixHtml = `
+    <table class="comparison-table">
+      <thead>
+        <tr>${tableHeaderCols}</tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="comparison-col-label">Overall Match Score</td>
+          ${totalScoreCols}
+        </tr>
+        <tr>
+          <td class="comparison-col-label">Skills Alignment</td>
+          ${skillsCols}
+        </tr>
+        <tr>
+          <td class="comparison-col-label">Experience Match</td>
+          ${expCols}
+        </tr>
+        <tr>
+          <td class="comparison-col-label">Growth Trajectory</td>
+          ${growthCols}
+        </tr>
+        <tr>
+          <td class="comparison-col-label">AI Decision Rationale</td>
+          ${reasonCols}
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById('comparison-matrix-body').innerHTML = matrixHtml;
+  document.getElementById('comparison-modal').style.display = 'flex';
+}
+
+function closeComparisonModal() {
+  document.getElementById('comparison-modal').style.display = 'none';
 }
 
 // Allow Enter shortcut (Ctrl/Cmd+Enter in textarea)
