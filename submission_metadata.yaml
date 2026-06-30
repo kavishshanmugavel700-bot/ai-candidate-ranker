@@ -1,0 +1,94 @@
+# Redrob Hackathon — Submission Metadata Template
+#
+# Copy this file to your repo root as `submission_metadata.yaml` and fill it in.
+# The fields here should match what you submit via the portal at upload time.
+# Stage 3 review uses this file to verify your portal metadata.
+
+# ============================================================================
+# Team identity
+# ============================================================================
+team_name: "Debug Dynamos"  # Used in leaderboard and announcements
+
+primary_contact:
+  name: "Vel Adhesh C B"
+  email: "cbveladhesh@gmail.com"   # Used for all organizer communication
+       # Used for outreach (User: Please fill in your actual phone)
+
+team_members:
+  - name: "Kavish"
+    email: "kavishshanmugavel700@gmail"  # User: Please update email if needed
+    role: "AI Backend & JD Parsing"
+  - name: "Vel Adhesh C B"
+    email: "cbveladhesh@gmail.com"      # User: Please update email if needed
+    role: "Data & Embeddings"
+  - name: "Jawahar V"
+    email: "25ad252@skcet.ac.in"  # User: Please update email if needed
+    role: "Frontend — Node.js & UI"
+  - name: "Thiakash S"
+    email: "thiakaeshs@gmail.com"    # User: Please update email if needed
+    role: "Evaluation & Presentation"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "https://github.com/kavishshanmugavel700-bot/ai-candidate-ranker"
+
+sandbox_link: "https://github.com/kavishshanmugavel700-bot/ai-candidate-ranker"
+# Required. A working hosted environment where the ranker can be run on a small
+# candidate sample. POINTED TO REPO - User: Please update if you host on HuggingFace Spaces.
+
+reproduce_command: "python generate_submission.py --id YOUR_PARTICIPANT_ID"
+# The single command that produces submission.csv from candidates.jsonl.
+# Should run end-to-end within 5 minutes on CPU with 16GB RAM and no network.
+
+# ============================================================================
+# Compute environment
+# ============================================================================
+compute:
+  platform: "Local Windows PC"                  # Or: "AWS EC2 c5.4xlarge", etc.
+  cpu_cores: 8                                  # Number of CPU cores used
+  ram_gb: 16                                    # Available RAM in GB
+  python_version: "3.13.0"                      # python --version
+  os: "Windows 11"                              # Or "macOS 14.2", etc.
+  uses_gpu_for_inference: false                 # Must be false — see compute constraints
+  has_network_during_ranking: false             # Must be false — no API calls during ranking
+  pre_computation_required: false               # true if you pre-compute embeddings or train models offline
+  pre_computation_time_minutes: 0               # Approximate, if applicable
+
+# ============================================================================
+# AI tools declaration
+# ============================================================================
+# Transparency only — declared use is NOT penalized. Be honest. Stage 5 interview
+# may verify these declarations against your code; declarations that contradict
+# your code or your interview are flagged.
+ai_tools_used:
+  - "Claude"
+  - "Gemini"
+  - "Groq"
+
+ai_usage_summary: |
+  Used Claude/Gemini for codebase research, UI refactoring, code review, and debugging.
+  Used Groq Llama-3.3-70b-versatile in the interactive demo backend only (for JD requirement extraction and candidate scoring).
+  No candidate data was shared with any LLM API for the offline ranking step.
+
+# ============================================================================
+# Approach summary (optional but recommended)
+# ============================================================================
+methodology_summary: |
+  Hybrid keyword (TF-IDF) and semantic (SentenceTransformer) local candidate ranking pipeline.
+  To meet strict compute time constraints (under 5 minutes), the pipeline first executes a fast TF-IDF 
+  pre-ranking to select the top 1,000 keyword matches. It then computes local semantic embeddings 
+  using the SentenceTransformer 'all-MiniLM-L6-v2' model on CPU to score matching similarities.
+  Includes a rule-based honeypot filter to automatically catch and filter out impossible profiles
+  (expert skills with 0 months duration, startup jobs dated prior to company foundation).
+  Outputs exactly 100 rows with unique, hallucination-free, factual candidate reasoning.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true        # I have read submission_spec.md in full
+  code_is_original_work: true       # My code is my team's original work (using AI as a tool is fine)
+  no_collusion: true                # I have not coordinated my submission with other teams
+  honeypot_check_done: true         # OPTIONAL — set true if you explicitly checked for honeypots in your ranking
+  reproduction_tested: true         # I have tested that my reproduce_command runs end-to-end
