@@ -323,6 +323,175 @@ function showError(msg) {
   box.style.display = 'flex';
 }
 
+// ── Export Report Functions ────────────────────────────────────
+function exportToExcel() {
+  if (!rawCandidates || rawCandidates.length === 0) {
+    alert("No candidates loaded to export!");
+    return;
+  }
+
+  const jdText = textarea.value.trim();
+
+  // Construct sheet layout
+  const data = [];
+  data.push(["RankAI - AI Candidate Ranking Report"]);
+  data.push(["Generated At:", new Date().toLocaleString()]);
+  data.push([]); // spacer
+
+  data.push(["Job Description Details:"]);
+  data.push([jdText]);
+  data.push([]); // spacer
+
+  data.push([
+    "Rank",
+    "Candidate Name",
+    "Total Score",
+    "Skills Score",
+    "Experience Score",
+    "Growth Score",
+    "AI Evaluation Reason"
+  ]);
+
+  rawCandidates.forEach((c, index) => {
+    data.push([
+      index + 1,
+      c.name || "Unknown",
+      c.total_score || 0,
+      c.skills_score || 0,
+      c.experience_score || 0,
+      c.growth_score || 0,
+      c.reason || ""
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 8 },   // Rank
+    { wch: 24 },  // Candidate Name
+    { wch: 12 },  // Total Score
+    { wch: 12 },  // Skills
+    { wch: 12 },  // Experience
+    { wch: 12 },  // Growth
+    { wch: 80 }   // AI Reason
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Candidate Rankings");
+  XLSX.writeFile(wb, "AI_Candidate_Rankings.xlsx");
+}
+
+function exportToPDF() {
+  if (!rawCandidates || rawCandidates.length === 0) {
+    alert("No candidates loaded to export!");
+    return;
+  }
+
+  const jdText = textarea.value.trim();
+  const dateStr = new Date().toLocaleString();
+
+  const container = document.createElement('div');
+  container.className = 'pdf-report';
+
+  // 1. Header
+  const header = document.createElement('div');
+  header.className = 'pdf-header';
+  header.innerHTML = `
+    <div class="pdf-logo">⚡ RankAI</div>
+    <div class="pdf-meta">
+      <strong>Evaluation Report</strong><br/>
+      Date: ${dateStr}<br/>
+      Source: Groq AI Ranker
+    </div>
+  `;
+  container.appendChild(header);
+
+  // 2. Job Description Section
+  const jdSection = document.createElement('div');
+  jdSection.className = 'pdf-section';
+  jdSection.innerHTML = `
+    <div class="pdf-section-title">Job Description Details</div>
+    <div class="pdf-jd-box">${escapeHTML(jdText)}</div>
+  `;
+  container.appendChild(jdSection);
+
+  // 3. Summary Table Section
+  const summarySection = document.createElement('div');
+  summarySection.className = 'pdf-section';
+  
+  let tableRows = '';
+  rawCandidates.forEach((c, index) => {
+    const total = c.total_score || 0;
+    const scoreCls = scoreClass(total);
+    tableRows += `
+      <tr>
+        <td><strong>#${index + 1}</strong></td>
+        <td><strong>${escapeHTML(c.name)}</strong></td>
+        <td class="pdf-badge-score ${scoreCls}">${total}</td>
+        <td>${c.skills_score || 0}</td>
+        <td>${c.experience_score || 0}</td>
+        <td>${c.growth_score || 0}</td>
+      </tr>
+    `;
+  });
+
+  summarySection.innerHTML = `
+    <div class="pdf-section-title">Ranked Candidate Summary</div>
+    <table class="pdf-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Total Score</th>
+          <th>Skills</th>
+          <th>Experience</th>
+          <th>Growth</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+  `;
+  container.appendChild(summarySection);
+
+  // 4. Candidate Details Section (forces page break)
+  const detailSection = document.createElement('div');
+  detailSection.className = 'pdf-section';
+  detailSection.style.pageBreakBefore = 'always';
+  
+  let detailsHtml = '<div class="pdf-section-title">Detailed Candidate Evaluations</div>';
+  rawCandidates.forEach((c, index) => {
+    detailsHtml += `
+      <div class="pdf-candidate-detail">
+        <div class="pdf-candidate-name">#${index + 1} - ${escapeHTML(c.name)}</div>
+        <div class="pdf-candidate-scores">
+          <span>Overall: ${c.total_score || 0}</span> | 
+          <span>Skills: ${c.skills_score || 0}</span> | 
+          <span>Experience: ${c.experience_score || 0}</span> | 
+          <span>Growth: ${c.growth_score || 0}</span>
+        </div>
+        <div class="pdf-candidate-reason">${escapeHTML(c.reason)}</div>
+      </div>
+    `;
+  });
+  detailSection.innerHTML = detailsHtml;
+  container.appendChild(detailSection);
+
+  // Options for html2pdf
+  const opt = {
+    margin:       10,
+    filename:     'AI_Candidate_Rank_Report.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(container).save().catch(err => {
+    console.error('PDF generation error:', err);
+    alert('Failed to generate PDF.');
+  });
+}
+
 // Allow Enter shortcut (Ctrl/Cmd+Enter in textarea)
 textarea.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') rankCandidates();

@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/style.css"/>
+
+  <!-- EXPORT TO EXCEL & PDF UTILITIES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -97,6 +101,14 @@
           <div class="title-group">
             <h2 class="results-title">Ranked Candidates</h2>
             <span class="results-badge" id="results-count">0 candidates</span>
+          </div>
+          <div class="export-actions">
+            <button class="btn-export btn-excel" onclick="exportToExcel()" title="Export data to Excel (.xlsx)">
+              <span class="btn-icon">📊</span> Excel
+            </button>
+            <button class="btn-export btn-pdf" onclick="exportToPDF()" title="Download PDF Report">
+              <span class="btn-icon">📄</span> PDF Report
+            </button>
           </div>
         </div>
 
