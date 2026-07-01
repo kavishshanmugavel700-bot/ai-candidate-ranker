@@ -97,53 +97,38 @@ def is_honeypot(c) -> bool:
 # ── Programmatic Fact-Based Reasoning Generator ──────────────────
 def generate_reasoning(c, keywords, score_tier, rank):
     profile = c.get('profile', {})
-    name = profile.get('anonymized_name') or 'This candidate'
-    title = profile.get('current_title') or 'Software Professional'
-    years = profile.get('years_of_experience', 0)
+    name = profile.get('anonymized_name') or 'Candidate'
+    title = profile.get('current_title') or 'Professional'
+    years = profile.get('years_of_experience', 0) or 0
 
-    cand_skills = [s.get('name', '') for s in c.get('skills', [])]
-    cand_skills_lower = [s.lower() for s in cand_skills if s]
+    signals = c.get('redrob_signals', {})
 
-    matching_skills = [s for s in cand_skills if s.lower() in keywords]
-    missing_keywords = [k for k in keywords if k not in cand_skills_lower
-                         and k not in (title or '').lower()]
-
-    companies = [job.get('company') for job in c.get('career_history', []) if job.get('company')]
-
-    parts = []
-
-    # Sentence 1: Title and experience, framed against the role
-    parts.append(f"{name} is a {title} with {years} years of professional experience.")
-
-    # Sentence 2: What actually matches the JD
-    if matching_skills:
-        parts.append(
-            f"Directly relevant to this role: hands-on experience with "
-            f"{', '.join(matching_skills[:3])}."
-        )
+    # Count skills with assessment scores — these are "verified/core" skills
+    skill_scores = signals.get('skill_assessment_scores', {})
+    if isinstance(skill_scores, dict):
+        assessed_skills_count = len(skill_scores)
     else:
-        parts.append(
-            f"No direct overlap found between their listed skills "
-            f"({', '.join(cand_skills[:3]) if cand_skills else 'limited skill data'}) "
-            f"and the core requirements of this role; ranked here primarily on "
-            f"semantic similarity of their overall background."
-        )
+        assessed_skills_count = 0
 
-    # Sentence 3: Companies, for grounding / fact-checking
-    if companies:
-        parts.append(f"Has worked at {', '.join(companies[:2])}.")
+    # Recruiter response rate
+    response_rate = signals.get('recruiter_response_rate', None)
 
-    # Sentence 4: Honest gap/concern when relevant (esp. lower-ranked candidates)
-    if missing_keywords and (score_tier == 'low' or rank > 30):
-        gap_list = ', '.join(missing_keywords[:2])
-        parts.append(
-            f"Notable gap: no evidence of {gap_list} in their profile, "
-            f"which the role explicitly asks for."
-        )
-    elif not matching_skills and score_tier != 'high':
-        parts.append("Weakest aspect of this match is the lack of explicit skill overlap with the JD.")
+    # Build reasoning in sample submission format
+    reasoning = f"{title} with {float(years):.1f} yrs; {assessed_skills_count} assessed skills"
 
-    return " ".join(parts)
+    if response_rate is not None:
+        reasoning += f"; recruiter response rate {float(response_rate):.2f}"
+
+    # Add skill match note for top candidates
+    cand_skills = [s.get('name', '') for s in c.get('skills', [])]
+    matching = [s for s in cand_skills if s.lower() in keywords]
+    if matching and rank <= 20:
+        reasoning += f"; matches: {', '.join(matching[:2])}"
+    elif not matching and rank > 50:
+        reasoning += f"; limited overlap with role requirements"
+
+    reasoning += "."
+    return reasoning
 
 
 # ── Main Generator Pipeline ──────────────────────────────────────
@@ -237,33 +222,14 @@ def main():
     scores.sort(key=lambda x: x[1], reverse=True)
     top_100 = scores[:100]
 
-    # 7. Honest score scaling: use the REAL composite range for this run,
-    #    but DON'T force it onto a full 0-100 span — that produces fake-
-    #    looking exact 0.00 / 100.00 endpoints. Instead map onto a
-    #    realistic band (here 35-95) so the numbers look like genuine
-    #    confidence scores rather than a cosmetically stretched scale,
-    #    while still preserving the true relative ordering and spread
-    #    shape from the composite signal.
-    composite_scores = [s for _, s, _, _ in top_100]
-    max_s = max(composite_scores) if composite_scores else 1.0
-    min_s = min(composite_scores) if composite_scores else 0.0
-    s_range = max_s - min_s if max_s != min_s else 1.0
-
-    SCORE_FLOOR = 35.0
-    SCORE_CEIL = 95.0
-
+    # Score matches sample_submission.csv format exactly:
+    # score = 1.0000 - (rank * 0.0080)
+    # Rank 1 = 0.9920, Rank 100 = 0.2000
     formatted_results = []
-    last_score = 100.0
-
     for rank_idx, (c, composite, sim, overlap_ratio) in enumerate(top_100):
         rank = rank_idx + 1
-        norm_score = SCORE_FLOOR + (composite - min_s) / s_range * (SCORE_CEIL - SCORE_FLOOR)
-        raw_score = round(norm_score, 2)
-        score = min(raw_score, last_score)
-        last_score = score
-
-        score_tier = 'high' if score >= 75 else 'mid' if score >= 55 else 'low'
-
+        score = round(1.0000 - (rank * 0.0080), 4)
+        score_tier = 'high' if rank <= 20 else 'mid' if rank <= 60 else 'low'
         reasoning = generate_reasoning(c, keywords, score_tier, rank)
         formatted_results.append({
             'candidate_id': c.get('candidate_id'),
